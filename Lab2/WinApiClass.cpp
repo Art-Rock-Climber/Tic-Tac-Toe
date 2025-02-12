@@ -1,14 +1,13 @@
-#include <Windows.h>
+п»ї#include <Windows.h>
 #include <Windowsx.h>
 #include <vector>
-#include <fstream> // Для std::ofstream и std::ifstream
+#include <fstream> // Р”Р»СЏ std::ofstream Рё std::ifstream
 #include <string>
-#include <algorithm> // Для std::all_of
+#include <algorithm> // Р”Р»СЏ std::all_of
 #include <ctime>
 #include <random>
 
-
-// Прототипы функций
+// РџСЂРѕС‚РѕС‚РёРїС‹ С„СѓРЅРєС†РёР№
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void SaveState(HWND hwnd);
 void LoadState(HWND hwnd);
@@ -19,34 +18,34 @@ void ResetColors(HWND hwnd);
 void UpdateWindowTitle(HWND hwnd);
 bool isOver(HWND hwnd);
 
-// Глобальные переменные
-int n = 3; // Размер сетки в ячейках по умолчанию
-const int defaultWidth = 320; // Размеры окна по умолчанию
+// Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ
+int n = 3; // Р Р°Р·РјРµСЂ СЃРµС‚РєРё РІ СЏС‡РµР№РєР°С… РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+const int defaultWidth = 320; // Р Р°Р·РјРµСЂС‹ РѕРєРЅР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 const int defaultHeight = 240;
-std::vector<std::vector<char>> gridState; // Состояние сетки: 'O' для кружков, 'X' для крестиков, '_' для пустых
-const wchar_t* stateFileName = L"grid_state.txt"; // Файл для сохранения и загрузки размеров и цветов окна и сетки и состояния сетки
-COLORREF backgroundColor = RGB(0, 0, 255); // Цвет фона (синий фон по умолчанию)
-COLORREF gridColor = RGB(255, 0, 0); // Цвет линий (красный цвет по умолчанию)
-char currentPlayer = 'X'; // Текущий игрок ('X' по умолчанию)
+std::vector<std::vector<char>> gridState; // РЎРѕСЃС‚РѕСЏРЅРёРµ СЃРµС‚РєРё: 'O' РґР»СЏ РєСЂСѓР¶РєРѕРІ, 'X' РґР»СЏ РєСЂРµСЃС‚РёРєРѕРІ, '_' РґР»СЏ РїСѓСЃС‚С‹С…
+const wchar_t* stateFileName = L"grid_state.txt"; // Р¤Р°Р№Р» РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ Рё Р·Р°РіСЂСѓР·РєРё СЂР°Р·РјРµСЂРѕРІ Рё С†РІРµС‚РѕРІ РѕРєРЅР° Рё СЃРµС‚РєРё Рё СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё
+COLORREF backgroundColor = RGB(0, 0, 255); // Р¦РІРµС‚ С„РѕРЅР° (СЃРёРЅРёР№ С„РѕРЅ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)
+COLORREF gridColor = RGB(255, 0, 0); // Р¦РІРµС‚ Р»РёРЅРёР№ (РєСЂР°СЃРЅС‹Р№ С†РІРµС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)
+char currentPlayer = 'X'; // РўРµРєСѓС‰РёР№ РёРіСЂРѕРє ('X' РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)
 #define OnClickResetGrid 1
 #define OnClickExit 2
 #define OnClickResetColors 3
 #define OnClickChangeGridSize 4
 
-// Создание генератора случайных чисел
+// РЎРѕР·РґР°РЅРёРµ РіРµРЅРµСЂР°С‚РѕСЂР° СЃР»СѓС‡Р°Р№РЅС‹С… С‡РёСЃРµР»
 std::mt19937 rng(std::random_device{}());
-std::uniform_int_distribution<> dist(0, 255); // Распределение для генерации целых чисел от 0 до 255
+std::uniform_int_distribution<> dist(0, 255); // Р Р°СЃРїСЂРµРґРµР»РµРЅРёРµ РґР»СЏ РіРµРЅРµСЂР°С†РёРё С†РµР»С‹С… С‡РёСЃРµР» РѕС‚ 0 РґРѕ 255
 
 /// <summary>
-/// Точка входа в приложение
+/// РўРѕС‡РєР° РІС…РѕРґР° РІ РїСЂРёР»РѕР¶РµРЅРёРµ
 /// </summary>
-/// <param name="hInst"> Дескриптор приложения </param>
+/// <param name="hInst"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РїСЂРёР»РѕР¶РµРЅРёСЏ </param>
 /// <param name="hPrevInstance"></param>
-/// <param name="pCmdLine"> Аргументы командной строки, переданные при запуске программы </param>
-/// <param name="nCmdShow"> Начальное состояние окна </param>
+/// <param name="pCmdLine"> РђСЂРіСѓРјРµРЅС‚С‹ РєРѕРјР°РЅРґРЅРѕР№ СЃС‚СЂРѕРєРё, РїРµСЂРµРґР°РЅРЅС‹Рµ РїСЂРё Р·Р°РїСѓСЃРєРµ РїСЂРѕРіСЂР°РјРјС‹ </param>
+/// <param name="nCmdShow"> РќР°С‡Р°Р»СЊРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РѕРєРЅР° </param>
 /// <returns></returns>
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
-    // Создание и регистрация класса окна
+    // РЎРѕР·РґР°РЅРёРµ Рё СЂРµРіРёСЃС‚СЂР°С†РёСЏ РєР»Р°СЃСЃР° РѕРєРЅР°
     WNDCLASS SoftwareWindowsClass = { 0 };
     SoftwareWindowsClass.hIcon = LoadIcon(NULL, IDI_HAND);
     SoftwareWindowsClass.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -59,10 +58,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
         return -1;
     }
 
-    // Создание окна
+    // РЎРѕР·РґР°РЅРёРµ РѕРєРЅР°
     HWND hwnd = CreateWindowW(
         L"MainWinAPIClass",
-        L"Крестики-нолики",
+        L"РљСЂРµСЃС‚РёРєРё-РЅРѕР»РёРєРё",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -74,20 +73,20 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
         NULL
     );
 
-    // Обработка аргумента командной строки для изменения размера сетки
+    // РћР±СЂР°Р±РѕС‚РєР° Р°СЂРіСѓРјРµРЅС‚Р° РєРѕРјР°РЅРґРЅРѕР№ СЃС‚СЂРѕРєРё РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° СЃРµС‚РєРё
     if (pCmdLine && *pCmdLine) {
         n = _wtoi(pCmdLine);
-        if (n <= 0) n = 3; // Возврат к значению по умолчанию при некорректном вводе
+        if (n <= 0) n = 3; // Р’РѕР·РІСЂР°С‚ Рє Р·РЅР°С‡РµРЅРёСЋ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РїСЂРё РЅРµРєРѕСЂСЂРµРєС‚РЅРѕРј РІРІРѕРґРµ
     }
 
-    // Инициализация состояния сетки
+    // РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё
     gridState.resize(n, std::vector<char>(n, '_'));
     LoadState(hwnd);
 
     CreateWinAPIMenu(hwnd);
     UpdateWindowTitle(hwnd);
 
-    // Обработка сообщений окна
+    // РћР±СЂР°Р±РѕС‚РєР° СЃРѕРѕР±С‰РµРЅРёР№ РѕРєРЅР°
     MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
@@ -98,19 +97,19 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
 }
 
 /// <summary>
-/// Обработчик сообщений окна
+/// РћР±СЂР°Р±РѕС‚С‡РёРє СЃРѕРѕР±С‰РµРЅРёР№ РѕРєРЅР°
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
-/// <param name="uMsg"> Код сообщения </param>
-/// <param name="wParam"> Дополнительная информация, связанная с сообщением </param>
-/// <param name="lParam"> Дополнительная информация, связанная с сообщением </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
+/// <param name="uMsg"> РљРѕРґ СЃРѕРѕР±С‰РµРЅРёСЏ </param>
+/// <param name="wParam"> Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ, СЃРІСЏР·Р°РЅРЅР°СЏ СЃ СЃРѕРѕР±С‰РµРЅРёРµРј </param>
+/// <param name="lParam"> Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ, СЃРІСЏР·Р°РЅРЅР°СЏ СЃ СЃРѕРѕР±С‰РµРЅРёРµРј </param>
 /// <returns></returns>
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static float cellWidth, cellHeight;
     switch (uMsg) {
     case WM_CREATE:
     {
-        // Создание окна
+        // РЎРѕР·РґР°РЅРёРµ РѕРєРЅР°
         CreateWinAPIMenu(hwnd);
 
         LoadState(hwnd);
@@ -124,7 +123,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
     case WM_SIZE:
     {
-        // Изменение размера окна
+        // РР·РјРµРЅРµРЅРёРµ СЂР°Р·РјРµСЂР° РѕРєРЅР°
         RECT rect;
         GetClientRect(hwnd, &rect);
         cellWidth = (static_cast<float>(rect.right) - rect.left) / n;
@@ -137,7 +136,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        // Рисование сетки
+        // Р РёСЃРѕРІР°РЅРёРµ СЃРµС‚РєРё
         HPEN hPen = CreatePen(PS_SOLID, 2, gridColor);
         HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
 
@@ -149,7 +148,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             LineTo(hdc, n * cellWidth, i * cellHeight);
         }
 
-        // Рисование крестиков и ноликов
+        // Р РёСЃРѕРІР°РЅРёРµ РєСЂРµСЃС‚РёРєРѕРІ Рё РЅРѕР»РёРєРѕРІ
         for (int row = 0; row < n; ++row) {
             for (int col = 0; col < n; ++col) {
                 int x = col * cellWidth;
@@ -157,7 +156,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 if (gridState[row][col] == 'O') {
                     HPEN circlePen = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));
-                    HBRUSH hBrush = (HBRUSH)GetStockObject(NULL_BRUSH); // Прозрачная заливка
+                    HBRUSH hBrush = (HBRUSH)GetStockObject(NULL_BRUSH); // РџСЂРѕР·СЂР°С‡РЅР°СЏ Р·Р°Р»РёРІРєР°
 
                     SelectObject(hdc, circlePen);
                     SelectObject(hdc, hBrush);
@@ -189,7 +188,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
     {
-        // Сохранение положения крестиков и ноликов
+        // РЎРѕС…СЂР°РЅРµРЅРёРµ РїРѕР»РѕР¶РµРЅРёСЏ РєСЂРµСЃС‚РёРєРѕРІ Рё РЅРѕР»РёРєРѕРІ
         int xPos = GET_X_LPARAM(lParam);
         int yPos = GET_Y_LPARAM(lParam);
 
@@ -212,22 +211,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_KEYDOWN:
     {
         if ((wParam == 'Q' && (GetKeyState(VK_CONTROL) & 0x8000)) || wParam == VK_ESCAPE) {
-            PostMessage(hwnd, WM_CLOSE, 0, 0); // Закрытие приложения
+            PostMessage(hwnd, WM_CLOSE, 0, 0); // Р—Р°РєСЂС‹С‚РёРµ РїСЂРёР»РѕР¶РµРЅРёСЏ
         }
         else if ((GetKeyState(VK_SHIFT) & 0x8000) && wParam == 'C') {
-            ShellExecute(NULL, L"open", L"notepad.exe", NULL, NULL, SW_SHOWNORMAL); // Открытие блокнота
+            ShellExecute(NULL, L"open", L"notepad.exe", NULL, NULL, SW_SHOWNORMAL); // РћС‚РєСЂС‹С‚РёРµ Р±Р»РѕРєРЅРѕС‚Р°
         }
         else if (wParam == VK_RETURN) {
-            // Смена цвета фона на случайный
+            // РЎРјРµРЅР° С†РІРµС‚Р° С„РѕРЅР° РЅР° СЃР»СѓС‡Р°Р№РЅС‹Р№
             backgroundColor = GetRandomColor();
             SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)CreateSolidBrush(backgroundColor));
             InvalidateRect(hwnd, NULL, TRUE);
         }
         else if ((wParam == 'R' && (GetKeyState(VK_CONTROL) & 0x8000))) {
-            ResetGridState(hwnd); // Перезапуск партии
+            ResetGridState(hwnd); // РџРµСЂРµР·Р°РїСѓСЃРє РїР°СЂС‚РёРё
         }
         else if (wParam >= '1' && wParam <= '9') {
-            int newSize = wParam - '0'; // Преобразуем код клавиши в число
+            int newSize = wParam - '0'; // РџСЂРµРѕР±СЂР°Р·СѓРµРј РєРѕРґ РєР»Р°РІРёС€Рё РІ С‡РёСЃР»Рѕ
             n = newSize;
             RECT rect;
             GetClientRect(hwnd, &rect);
@@ -239,7 +238,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
     case WM_MOUSEWHEEL:
     {
-        // Плавное изменение цвета
+        // РџР»Р°РІРЅРѕРµ РёР·РјРµРЅРµРЅРёРµ С†РІРµС‚Р°
         int delta = GET_WHEEL_DELTA_WPARAM(wParam);
         int r = GetRValue(gridColor);
         int g = GetGValue(gridColor);
@@ -255,7 +254,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
     case WM_COMMAND:
     {
-        // Обработка сообещний меню
+        // РћР±СЂР°Р±РѕС‚РєР° СЃРѕРѕР±РµС‰РЅРёР№ РјРµРЅСЋ
         switch (wParam) {
         case OnClickResetGrid:
         {
@@ -289,21 +288,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 /// <summary>
-/// Функция для сохранения состояния сетки в файл
+/// Р¤СѓРЅРєС†РёСЏ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё РІ С„Р°Р№Р»
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void SaveState(HWND hwnd) {
     std::ofstream outFile("grid_state.txt");
     if (outFile.is_open()) {
-        // Размер сетки в клетках
+        // Р Р°Р·РјРµСЂ СЃРµС‚РєРё РІ РєР»РµС‚РєР°С…
         outFile << n << std::endl;
 
-        // Размер окна
+        // Р Р°Р·РјРµСЂ РѕРєРЅР°
         RECT rect;
         GetWindowRect(hwnd, &rect);
         outFile << rect.right - rect.left << " " << rect.bottom - rect.top << std::endl;
 
-        // Цвет фона и линий
+        // Р¦РІРµС‚ С„РѕРЅР° Рё Р»РёРЅРёР№
         outFile << static_cast<int>(GetRValue(backgroundColor)) << " "
             << static_cast<int>(GetGValue(backgroundColor)) << " "
             << static_cast<int>(GetBValue(backgroundColor)) << std::endl;
@@ -311,10 +310,10 @@ void SaveState(HWND hwnd) {
             << static_cast<int>(GetGValue(gridColor)) << " "
             << static_cast<int>(GetBValue(gridColor)) << std::endl;
 
-        // Текущий игрок
+        // РўРµРєСѓС‰РёР№ РёРіСЂРѕРє
         outFile << currentPlayer << std::endl;
 
-        // Текущий игрок
+        // РўРµРєСѓС‰РёР№ РёРіСЂРѕРє
         for (int i = 0; i < n; ++i) {
             for (int j = 0; j < n; ++j) {
                 outFile << gridState[i][j];
@@ -327,24 +326,24 @@ void SaveState(HWND hwnd) {
 }
 
 /// <summary>
-/// Функция для загрузки состояния сетки из файла
+/// Р¤СѓРЅРєС†РёСЏ РґР»СЏ Р·Р°РіСЂСѓР·РєРё СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё РёР· С„Р°Р№Р»Р°
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void LoadState(HWND hwnd) {
     std::ifstream inFile("grid_state.txt");
     if (inFile.is_open()) {
-        // Размер сетки в клетках
+        // Р Р°Р·РјРµСЂ СЃРµС‚РєРё РІ РєР»РµС‚РєР°С…
         int savedN;
         inFile >> savedN;
-        inFile.ignore(); // Пропустить символ новой строки после числа
+        inFile.ignore(); // РџСЂРѕРїСѓСЃС‚РёС‚СЊ СЃРёРјРІРѕР» РЅРѕРІРѕР№ СЃС‚СЂРѕРєРё РїРѕСЃР»Рµ С‡РёСЃР»Р°
 
-        // Размер окна
+        // Р Р°Р·РјРµСЂ РѕРєРЅР°
         int width, height;
         inFile >> width >> height;
         SetWindowPos(hwnd, NULL, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
         inFile.ignore();
 
-        // Цвет фона и линий
+        // Р¦РІРµС‚ С„РѕРЅР° Рё Р»РёРЅРёР№
         int r, g, b;
         inFile >> r >> g >> b;
         backgroundColor = RGB(r, g, b);
@@ -353,11 +352,11 @@ void LoadState(HWND hwnd) {
         gridColor = RGB(r, g, b);
         inFile.ignore();
 
-        // Текущий игрок
+        // РўРµРєСѓС‰РёР№ РёРіСЂРѕРє
         inFile >> currentPlayer;
         inFile.ignore();
 
-        // Состояние сетки
+        // РЎРѕСЃС‚РѕСЏРЅРёРµ СЃРµС‚РєРё
         if (savedN == n && n == gridState.size()) {
             for (int i = 0; i < n; ++i) {
                 for (int j = 0; j < n; ++j) {
@@ -377,44 +376,44 @@ void LoadState(HWND hwnd) {
 }
 
 /// <summary>
-/// Функция для генерации случайного цвета
+/// Р¤СѓРЅРєС†РёСЏ РґР»СЏ РіРµРЅРµСЂР°С†РёРё СЃР»СѓС‡Р°Р№РЅРѕРіРѕ С†РІРµС‚Р°
 /// </summary>
-/// <returns> Цвет в формате RGB(r, g, b) </returns>
+/// <returns> Р¦РІРµС‚ РІ С„РѕСЂРјР°С‚Рµ RGB(r, g, b) </returns>
 COLORREF GetRandomColor() {
     return RGB(dist(rng), dist(rng), dist(rng));
 }
 
 /// <summary>
-/// Создание меню
+/// РЎРѕР·РґР°РЅРёРµ РјРµРЅСЋ
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void CreateWinAPIMenu(HWND hwnd) {
     HMENU rootMenu = CreateMenu();
     HMENU subMenu = CreateMenu();
-    AppendMenu(rootMenu, MF_POPUP, (int)subMenu, L"Меню");
-    AppendMenu(subMenu, MF_STRING, OnClickResetGrid, L"Сброс состояния сетки");
-    AppendMenu(subMenu, MF_STRING, OnClickResetColors, L"Сброс цветов");
-    AppendMenu(subMenu, MF_STRING, OnClickExit, L"Выход");
+    AppendMenu(rootMenu, MF_POPUP, (int)subMenu, L"РњРµРЅСЋ");
+    AppendMenu(subMenu, MF_STRING, OnClickResetGrid, L"РЎР±СЂРѕСЃ СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё");
+    AppendMenu(subMenu, MF_STRING, OnClickResetColors, L"РЎР±СЂРѕСЃ С†РІРµС‚РѕРІ");
+    AppendMenu(subMenu, MF_STRING, OnClickExit, L"Р’С‹С…РѕРґ");
 
     SetMenu(hwnd, rootMenu);
 }
 
 /// <summary>
-/// Сброс состояния сетки
+/// РЎР±СЂРѕСЃ СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃРµС‚РєРё
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void ResetGridState(HWND hwnd) {
-    gridState.clear(); // Очищаем текущее состояние сетки
-    gridState.resize(n, std::vector<char>(n, '_')); // Создаем новую сетку
+    gridState.clear(); // РћС‡РёС‰Р°РµРј С‚РµРєСѓС‰РµРµ СЃРѕСЃС‚РѕСЏРЅРёРµ СЃРµС‚РєРё
+    gridState.resize(n, std::vector<char>(n, '_')); // РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ СЃРµС‚РєСѓ
     currentPlayer = 'X';
     UpdateWindowTitle(hwnd);
     InvalidateRect(hwnd, NULL, TRUE);
 }
 
 /// <summary>
-/// Сброс цветов
+/// РЎР±СЂРѕСЃ С†РІРµС‚РѕРІ
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void ResetColors(HWND hwnd) {
     backgroundColor = RGB(0, 0, 255);
     gridColor = RGB(255, 0, 0);
@@ -423,23 +422,23 @@ void ResetColors(HWND hwnd) {
 }
 
 /// <summary>
-/// Обновление названия окна
+/// РћР±РЅРѕРІР»РµРЅРёРµ РЅР°Р·РІР°РЅРёСЏ РѕРєРЅР°
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
 void UpdateWindowTitle(HWND hwnd) {
     wchar_t title[50];
-    wsprintf(title, L"Крестики-нолики - Ход игрока: %c", currentPlayer);
+    wsprintf(title, L"РљСЂРµСЃС‚РёРєРё-РЅРѕР»РёРєРё - РҐРѕРґ РёРіСЂРѕРєР°: %c", currentPlayer);
     SetWindowText(hwnd, title);
 }
 
 /// <summary>
-/// Проверка на завершение игры
+/// РџСЂРѕРІРµСЂРєР° РЅР° Р·Р°РІРµСЂС€РµРЅРёРµ РёРіСЂС‹
 /// </summary>
-/// <param name="hwnd"> Дескриптор окна </param>
-/// <returns> Завершена игра или нет </returns>
+/// <param name="hwnd"> Р”РµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР° </param>
+/// <returns> Р—Р°РІРµСЂС€РµРЅР° РёРіСЂР° РёР»Рё РЅРµС‚ </returns>
 bool isOver(HWND hwnd) {
     char winner = '_';
-    // Проверка горизонталей и вертикалей
+    // РџСЂРѕРІРµСЂРєР° РіРѕСЂРёР·РѕРЅС‚Р°Р»РµР№ Рё РІРµСЂС‚РёРєР°Р»РµР№
     for (int i = 0; i < n; ++i) {
         if (winner == '_' && gridState[i][0] != '_' && std::all_of(gridState[i].begin(), gridState[i].end(), [i](char c) { return c == gridState[i][0]; }))
             winner = gridState[i][0];
@@ -447,7 +446,7 @@ bool isOver(HWND hwnd) {
             winner = gridState[0][i];
     }
 
-    // Проверка диагоналей
+    // РџСЂРѕРІРµСЂРєР° РґРёР°РіРѕРЅР°Р»РµР№
     if (winner == '_') {
         bool left_diag = true, right_diag = true;
         for (int i = 0; i < n; ++i) {
@@ -459,7 +458,7 @@ bool isOver(HWND hwnd) {
         if (gridState[0][n - 1] != '_' && right_diag) winner = gridState[0][n - 1];
     }
 
-    // Завершение игры
+    // Р—Р°РІРµСЂС€РµРЅРёРµ РёРіСЂС‹
     if (winner == '_') {
         bool fullFilled = true;
         for (int i = 0; i < n; ++i) {
@@ -473,13 +472,13 @@ bool isOver(HWND hwnd) {
         }
 
         if (fullFilled) {
-            MessageBox(hwnd, L"Ничья!", L"Ничья", MB_OK);
+            MessageBox(hwnd, L"РќРёС‡СЊСЏ!", L"РќРёС‡СЊСЏ", MB_OK);
             ResetGridState(hwnd);
             return true;
         }
     }
     else {
-        MessageBox(hwnd, (std::wstring(L"Игрок ") + static_cast<wchar_t>(winner) + L" победил!").c_str(), L"Победа", MB_OK);
+        MessageBox(hwnd, (std::wstring(L"РРіСЂРѕРє ") + static_cast<wchar_t>(winner) + L" РїРѕР±РµРґРёР»!").c_str(), L"РџРѕР±РµРґР°", MB_OK);
         ResetGridState(hwnd);
         return true;
     }
