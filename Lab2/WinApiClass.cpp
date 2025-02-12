@@ -1,12 +1,14 @@
 #include <Windows.h>
 #include <Windowsx.h>
 #include <vector>
-#include <fstream>
+#include <fstream> // Для std::ofstream и std::ifstream
 #include <string>
-#include <algorithm>
+#include <algorithm> // Для std::all_of
 #include <ctime>
+#include <random>
 
-// Объявление функций
+
+// Прототипы функций
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void SaveState(HWND hwnd);
 void LoadState(HWND hwnd);
@@ -15,7 +17,7 @@ void CreateWinAPIMenu(HWND hwnd);
 void ResetGridState(HWND hwnd);
 void ResetColors(HWND hwnd);
 void UpdateWindowTitle(HWND hwnd);
-bool CheckWinner(HWND hwnd);
+bool isOver(HWND hwnd);
 
 // Глобальные переменные
 int n = 3; // Размер сетки в ячейках по умолчанию
@@ -29,6 +31,11 @@ char currentPlayer = 'X'; // Текущий игрок ('X' по умолчанию)
 #define OnClickResetGrid 1
 #define OnClickExit 2
 #define OnClickResetColors 3
+#define OnClickChangeGridSize 4
+
+// Создание генератора случайных чисел
+std::mt19937 rng(std::random_device{}());
+std::uniform_int_distribution<> dist(0, 255); // Распределение для генерации целых чисел от 0 до 255
 
 /// <summary>
 /// Точка входа в приложение
@@ -106,10 +113,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         // Создание окна
         CreateWinAPIMenu(hwnd);
 
+        LoadState(hwnd);
+
         RECT rect;
         GetClientRect(hwnd, &rect);
         cellWidth = (static_cast<float>(rect.right) - rect.left) / n;
         cellHeight = (static_cast<float>(rect.bottom) - rect.top) / n;
+
         return 0;
     }
     case WM_SIZE:
@@ -155,6 +165,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         x + 0.1f * cellWidth, y + 0.1f * cellHeight);
 
                     DeleteObject(circlePen);
+                    DeleteObject(hBrush);
                 }
                 else if (gridState[row][col] == 'X') {
                     HPEN crossPen = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));
@@ -190,12 +201,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 gridState[row][col] = currentPlayer;
                 currentPlayer = (currentPlayer == 'O') ? 'X' : 'O';
             }
-            if (CheckWinner(hwnd)) {
-                InvalidateRect(hwnd, NULL, TRUE);
+            InvalidateRect(hwnd, NULL, TRUE);
+            if (isOver(hwnd)) {
                 break;
             }
             UpdateWindowTitle(hwnd);
-            InvalidateRect(hwnd, NULL, TRUE);
         }
         return 0;
     }
@@ -216,6 +226,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         else if ((wParam == 'R' && (GetKeyState(VK_CONTROL) & 0x8000))) {
             ResetGridState(hwnd); // Перезапуск партии
         }
+        else if (wParam >= '1' && wParam <= '9') {
+            int newSize = wParam - '0'; // Преобразуем код клавиши в число
+            n = newSize;
+            RECT rect;
+            GetClientRect(hwnd, &rect);
+            cellWidth = (static_cast<float>(rect.right) - rect.left) / n;
+            cellHeight = (static_cast<float>(rect.bottom) - rect.top) / n;
+            ResetGridState(hwnd);
+        }
         return 0;
     }
     case WM_MOUSEWHEEL:
@@ -235,25 +254,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
     }
     case WM_COMMAND:
+    {
+        // Обработка сообещний меню
         switch (wParam) {
         case OnClickResetGrid:
+        {
             ResetGridState(hwnd);
             break;
+        } 
         case OnClickResetColors:
+        {
             ResetColors(hwnd);
             break;
+        }
         case OnClickExit:
+        {
             PostQuitMessage(0);
             break;
+        }
         default:
             break;
         }
         return 0;
+    }
     case WM_DESTROY:
+    {
         SaveState(hwnd);
         PostQuitMessage(0);
         return 0;
-
+    }
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
@@ -329,13 +358,18 @@ void LoadState(HWND hwnd) {
         inFile.ignore();
 
         // Состояние сетки
-        if (savedN == n) {
+        if (savedN == n && n == gridState.size()) {
             for (int i = 0; i < n; ++i) {
                 for (int j = 0; j < n; ++j) {
                     inFile.get(gridState[i][j]);
                 }
                 inFile.ignore();
             }
+        }
+        else {
+            n = savedN;
+            gridState.clear();
+            gridState.resize(n, std::vector<char>(n, '_'));
         }
 
         inFile.close();
@@ -347,8 +381,7 @@ void LoadState(HWND hwnd) {
 /// </summary>
 /// <returns> Цвет в формате RGB(r, g, b) </returns>
 COLORREF GetRandomColor() {
-    srand((unsigned)(time(0)));
-    return RGB(rand() % 256, rand() % 256, rand() % 256);
+    return RGB(dist(rng), dist(rng), dist(rng));
 }
 
 /// <summary>
@@ -371,9 +404,8 @@ void CreateWinAPIMenu(HWND hwnd) {
 /// </summary>
 /// <param name="hwnd"> Дескриптор окна </param>
 void ResetGridState(HWND hwnd) {
-    for (auto& row : gridState) {
-        std::fill(row.begin(), row.end(), '_');
-    }
+    gridState.clear(); // Очищаем текущее состояние сетки
+    gridState.resize(n, std::vector<char>(n, '_')); // Создаем новую сетку
     currentPlayer = 'X';
     UpdateWindowTitle(hwnd);
     InvalidateRect(hwnd, NULL, TRUE);
@@ -404,8 +436,8 @@ void UpdateWindowTitle(HWND hwnd) {
 /// Проверка на завершение игры
 /// </summary>
 /// <param name="hwnd"> Дескриптор окна </param>
-/// <returns></returns>
-bool CheckWinner(HWND hwnd) {
+/// <returns> Завершена игра или нет </returns>
+bool isOver(HWND hwnd) {
     char winner = '_';
     // Проверка горизонталей и вертикалей
     for (int i = 0; i < n; ++i) {
@@ -428,7 +460,24 @@ bool CheckWinner(HWND hwnd) {
     }
 
     // Завершение игры
-    if (winner == '_') return false;
+    if (winner == '_') {
+        bool fullFilled = true;
+        for (int i = 0; i < n; ++i) {
+            if (fullFilled)
+                for (int j = 0; j < n; ++j) {
+                    if (gridState[i][j] == '_') {
+                        fullFilled = false;
+                        break;
+                    }
+                }
+        }
+
+        if (fullFilled) {
+            MessageBox(hwnd, L"Ничья!", L"Ничья", MB_OK);
+            ResetGridState(hwnd);
+            return true;
+        }
+    }
     else {
         MessageBox(hwnd, (std::wstring(L"Игрок ") + static_cast<wchar_t>(winner) + L" победил!").c_str(), L"Победа", MB_OK);
         ResetGridState(hwnd);
