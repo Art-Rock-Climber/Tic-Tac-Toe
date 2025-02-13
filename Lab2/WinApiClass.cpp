@@ -219,14 +219,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         else if (wParam == VK_RETURN) {
             // Смена цвета фона на случайный
             backgroundColor = GetRandomColor();
-            SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)CreateSolidBrush(backgroundColor));
+            HBRUSH hOldBrush = (HBRUSH)GetClassLongPtr(hwnd, GCLP_HBRBACKGROUND);
+            HBRUSH hNewBrush = CreateSolidBrush(backgroundColor);
+            SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)hNewBrush);
+            DeleteObject(hOldBrush);
             InvalidateRect(hwnd, NULL, TRUE);
         }
         else if ((wParam == 'R' && (GetKeyState(VK_CONTROL) & 0x8000))) {
             ResetGridState(hwnd); // Перезапуск партии
         }
         else if (wParam >= '1' && wParam <= '9') {
-            int newSize = wParam - '0'; // Преобразуем код клавиши в число
+            int newSize = wParam - '0';
             n = newSize;
             RECT rect;
             GetClientRect(hwnd, &rect);
@@ -279,6 +282,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_DESTROY:
     {
         SaveState(hwnd);
+
+        HBRUSH hBrush = (HBRUSH)GetClassLongPtr(hwnd, GCLP_HBRBACKGROUND);
+        if (hBrush) {
+            DeleteObject(hBrush);
+        }
+
+        HMENU hMenu = GetMenu(hwnd);
+        if (hMenu) {
+            DestroyMenu(hMenu);
+        }
+
         PostQuitMessage(0);
         return 0;
     }
@@ -347,7 +361,10 @@ void LoadState(HWND hwnd) {
         int r, g, b;
         inFile >> r >> g >> b;
         backgroundColor = RGB(r, g, b);
-        SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)CreateSolidBrush(backgroundColor));
+        HBRUSH hOldBrush = (HBRUSH)GetClassLongPtr(hwnd, GCLP_HBRBACKGROUND);
+        HBRUSH hNewBrush = CreateSolidBrush(backgroundColor);
+        SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)hNewBrush);
+        DeleteObject(hOldBrush);
         inFile >> r >> g >> b;
         gridColor = RGB(r, g, b);
         inFile.ignore();
