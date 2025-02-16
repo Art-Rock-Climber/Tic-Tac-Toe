@@ -10,7 +10,7 @@
 // Прототипы функций
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void SaveState(HWND hwnd);
-void LoadState(HWND hwnd);
+void LoadState(HWND hwnd, int cmdN);
 COLORREF GetRandomColor();
 void CreateWinAPIMenu(HWND hwnd);
 void ResetGridState(HWND hwnd);
@@ -19,9 +19,12 @@ void UpdateWindowTitle(HWND hwnd);
 bool isOver(HWND hwnd);
 
 // Глобальные переменные
-int n = 3; // Размер сетки в ячейках по умолчанию
+const int defaultN = 3;  // Размер сетки в ячейках по умолчанию
+int n = defaultN;
 const int defaultWidth = 320; // Размеры окна по умолчанию
 const int defaultHeight = 240;
+float cellWidth = defaultWidth / n; // Размеры клеток
+float cellHeight = defaultHeight / n;
 std::vector<std::vector<char>> gridState; // Состояние сетки: 'O' для кружков, 'X' для крестиков, '_' для пустых
 const wchar_t* stateFileName = L"grid_state.txt"; // Файл для сохранения и загрузки размеров и цветов окна и сетки и состояния сетки
 COLORREF backgroundColor = RGB(0, 0, 255); // Цвет фона (синий фон по умолчанию)
@@ -74,15 +77,21 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
     );
 
     // Обработка аргумента командной строки для изменения размера сетки
+    int cmdN = 0;
     if (pCmdLine && *pCmdLine) {
         n = _wtoi(pCmdLine);
-        if (n <= 0) n = 3; // Возврат к значению по умолчанию при некорректном вводе
+        if (n > 0 && n <= 9) cmdN = n;
     }
 
     // Инициализация состояния сетки
-    gridState.resize(n, std::vector<char>(n, '_'));
-    LoadState(hwnd);
+    LoadState(hwnd, cmdN);
 
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+    cellWidth = (static_cast<float>(rect.right) - rect.left) / n;
+    cellHeight = (static_cast<float>(rect.bottom) - rect.top) / n;
+
+    // Создание меню
     CreateWinAPIMenu(hwnd);
     UpdateWindowTitle(hwnd);
 
@@ -105,22 +114,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
 /// <param name="lParam"> Дополнительная информация, связанная с сообщением </param>
 /// <returns></returns>
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static float cellWidth, cellHeight;
     switch (uMsg) {
-    case WM_CREATE:
-    {
-        // Создание окна
-        CreateWinAPIMenu(hwnd);
-
-        LoadState(hwnd);
-
-        RECT rect;
-        GetClientRect(hwnd, &rect);
-        cellWidth = (static_cast<float>(rect.right) - rect.left) / n;
-        cellHeight = (static_cast<float>(rect.bottom) - rect.top) / n;
-
-        return 0;
-    }
     case WM_SIZE:
     {
         // Изменение размера окна
@@ -343,12 +337,13 @@ void SaveState(HWND hwnd) {
 /// Функция для загрузки состояния сетки из файла
 /// </summary>
 /// <param name="hwnd"> Дескриптор окна </param>
-void LoadState(HWND hwnd) {
+void LoadState(HWND hwnd, int cmdN) {
     std::ifstream inFile("grid_state.txt");
     if (inFile.is_open()) {
         // Размер сетки в клетках
         int savedN;
         inFile >> savedN;
+        n = savedN;
         inFile.ignore(); // Пропустить символ новой строки после числа
 
         // Размер окна
@@ -374,16 +369,19 @@ void LoadState(HWND hwnd) {
         inFile.ignore();
 
         // Состояние сетки
-        if (savedN == n && n == gridState.size()) {
+        if (!cmdN || (cmdN == n)) {
+            gridState.resize(n, std::vector<char>(n, '_'));
             for (int i = 0; i < n; ++i) {
                 for (int j = 0; j < n; ++j) {
                     inFile.get(gridState[i][j]);
                 }
                 inFile.ignore();
             }
+            n = savedN;
         }
         else {
-            n = savedN;
+            n = cmdN;
+            currentPlayer = 'X';
             gridState.clear();
             gridState.resize(n, std::vector<char>(n, '_'));
         }
