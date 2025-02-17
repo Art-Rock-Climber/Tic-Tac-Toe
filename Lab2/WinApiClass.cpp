@@ -6,6 +6,9 @@
 #include <algorithm> // Для std::all_of
 #include <ctime>
 #include <random>
+#pragma comment(lib, "winmm.lib")
+#include <mmsystem.h> // Для PlaySound
+
 
 // Прототипы функций
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -17,6 +20,7 @@ void ResetGridState(HWND hwnd);
 void ResetColors(HWND hwnd);
 void UpdateWindowTitle(HWND hwnd);
 bool isOver(HWND hwnd);
+void PlaySystemSound(LPCWSTR soundAlias);
 
 // Глобальные переменные
 const int defaultN = 3;  // Размер сетки в ячейках по умолчанию
@@ -34,6 +38,7 @@ char currentPlayer = 'X'; // Текущий игрок ('X' по умолчан�
 #define OnClickExit 2
 #define OnClickResetColors 3
 #define OnClickChangeGridSize 4
+#define OnClickAboutMenu 5
 
 // Создание генератора случайных чисел
 std::mt19937 rng(std::random_device{}());
@@ -268,6 +273,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             PostQuitMessage(0);
             break;
         }
+        case OnClickAboutMenu:
+        {
+            MessageBox(hwnd, L"Левая кнопка мыши - рисовать нолики\n"
+                L"Правая кнопка мыши - рисовать крестики\n"
+                L"CTRL+R - новая игра\n"
+                L"1-9 - изменить количество клеток сетки\n"
+                L"ENTER - изменить цвет фона на случайный\n"
+                L"Прокрутка колёсика мыши - плавное изменение цвета сетки\n"
+                L"SHIFT+C - открыть блокнот\n"
+                L"ESC или CTRL+Q - выход", L"Справка", MB_ICONINFORMATION);
+            break;
+        }
         default:
             break;
         }
@@ -337,6 +354,7 @@ void SaveState(HWND hwnd) {
 /// Функция для загрузки состояния сетки из файла
 /// </summary>
 /// <param name="hwnd"> Дескриптор окна </param>
+/// <param name="cmdN"> Параметр n, переданный через консоль </param>
 void LoadState(HWND hwnd, int cmdN) {
     std::ifstream inFile("grid_state.txt");
     if (inFile.is_open()) {
@@ -388,6 +406,12 @@ void LoadState(HWND hwnd, int cmdN) {
 
         inFile.close();
     }
+    else {
+        //n = defaultN;
+        //SetWindowPos(hwnd, NULL, 0, 0, defaultWidth, defaultHeight, SWP_NOMOVE | SWP_NOZORDER);
+        gridState.clear();
+        gridState.resize(n, std::vector<char>(n, '_'));
+    }
 }
 
 /// <summary>
@@ -406,7 +430,8 @@ void CreateWinAPIMenu(HWND hwnd) {
     HMENU rootMenu = CreateMenu();
     HMENU subMenu = CreateMenu();
     AppendMenu(rootMenu, MF_POPUP, (int)subMenu, L"Меню");
-    AppendMenu(subMenu, MF_STRING, OnClickResetGrid, L"Сброс состояния сетки");
+    AppendMenu(rootMenu, MF_STRING, OnClickAboutMenu, L"Справка");
+    AppendMenu(subMenu, MF_STRING, OnClickResetGrid, L"Новая игра");
     AppendMenu(subMenu, MF_STRING, OnClickResetColors, L"Сброс цветов");
     AppendMenu(subMenu, MF_STRING, OnClickExit, L"Выход");
 
@@ -487,14 +512,24 @@ bool isOver(HWND hwnd) {
         }
 
         if (fullFilled) {
+            PlaySystemSound(L"SYSTEMDEFAULT");
             MessageBox(hwnd, L"Ничья!", L"Ничья", MB_OK);
             ResetGridState(hwnd);
             return true;
         }
     }
     else {
+        PlaySystemSound(L"SYSTEMDEFAULT");
         MessageBox(hwnd, (std::wstring(L"Игрок ") + static_cast<wchar_t>(winner) + L" победил!").c_str(), L"Победа", MB_OK);
         ResetGridState(hwnd);
         return true;
     }
+}
+
+/// <summary>
+/// Воспроизводит системный звук.
+/// </summary>
+/// <param name="soundAlias"> Системный звук </param>
+void PlaySystemSound(LPCWSTR soundAlias) {
+    PlaySound(soundAlias, NULL, SND_ALIAS | SND_ASYNC);
 }
