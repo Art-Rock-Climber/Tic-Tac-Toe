@@ -23,6 +23,7 @@ bool isOver(HWND hwnd);
 void PlaySystemSound(LPCWSTR soundAlias);
 
 // Глобальные переменные
+const TCHAR szWinClass[] = L"MainWinAPIClass";
 const int defaultN = 3;  // Размер сетки в ячейках по умолчанию
 int n = defaultN;
 const int defaultWidth = 320; // Размеры окна по умолчанию
@@ -58,7 +59,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
     SoftwareWindowsClass.hIcon = LoadIcon(NULL, IDI_HAND);
     SoftwareWindowsClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     SoftwareWindowsClass.hInstance = hInst;
-    SoftwareWindowsClass.lpszClassName = L"MainWinAPIClass";
+    SoftwareWindowsClass.lpszClassName = szWinClass;
     SoftwareWindowsClass.hbrBackground = CreateSolidBrush(backgroundColor);
     SoftwareWindowsClass.lpfnWndProc = WindowProc;
 
@@ -106,6 +107,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, PWSTR pCmdLine, in
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    HMENU hMenu = GetMenu(hwnd);
+    if (hMenu) DestroyMenu(hMenu);
+    DestroyWindow(hwnd);
+    UnregisterClass(szWinClass, hInst);
 
     return 0;
 }
@@ -297,11 +303,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         HBRUSH hBrush = (HBRUSH)GetClassLongPtr(hwnd, GCLP_HBRBACKGROUND);
         if (hBrush) {
             DeleteObject(hBrush);
-        }
-
-        HMENU hMenu = GetMenu(hwnd);
-        if (hMenu) {
-            DestroyMenu(hMenu);
         }
 
         PostQuitMessage(0);
